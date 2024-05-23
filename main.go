@@ -10,50 +10,46 @@ import (
 	"sync"
 )
 
-func downloadImage(imageLink string, downloadFolder string, splittedLink []string, wg *sync.WaitGroup) {
+func downloadImage(imageLink string, downloadFolder string, splittedLink []string, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	imageFileName := splittedLink[len(splittedLink)-1]
 
 	out, err := os.Create(fmt.Sprintf("%s/%s", strings.TrimRight(downloadFolder, "/"), imageFileName))
 	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
+		return fmt.Errorf("Error creating file:", err)
 	}
 	defer out.Close()
 
 	resp, err := http.Get(imageLink)
 	if err != nil {
-		fmt.Println("Error downloading image:", err)
-		return
+		return fmt.Errorf("Error downloading image:", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Error: Received non-200 status code %d for URL: %s\n", resp.StatusCode, imageLink)
-		return
+		return fmt.Errorf("Error: Received non-200 status code %d for URL: %s\n", resp.StatusCode, imageLink)
 	}
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		fmt.Println("Error saving image:", err)
-		return
+		return fmt.Errorf("Error saving image:", err)
 	}
 
 	fmt.Printf("Downloaded %s\n", imageFileName)
+
+	return nil
 }
 
-func downloadImages(imagesList []string, downloadFolder string) {
+func downloadImages(imagesList []string, downloadFolder string) error {
 	_, err := os.Stat(downloadFolder)
 	if os.IsNotExist(err) {
 		err := os.Mkdir(downloadFolder, 0755)
 		if err != nil {
-			fmt.Println("Error creating the download folder:", err)
-			return
+			return fmt.Errorf("Error creating the download folder:", err)
 		}
 	} else if err != nil {
-		fmt.Println("Error checking if the download folder exists:", err)
-		return
+		return fmt.Errorf("Error checking if the download folder exists:", err)
 	}
 
 	var wg sync.WaitGroup
@@ -65,6 +61,8 @@ func downloadImages(imagesList []string, downloadFolder string) {
 	}
 
 	wg.Wait()
+
+	return nil
 }
 
 func main() {
